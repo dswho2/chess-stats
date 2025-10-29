@@ -50,28 +50,29 @@ function ForumPostItem({ post }: ForumPostItemProps) {
   const { id, title, author, replies, views, lastActivity, category } = post;
 
   return (
-    <Link href={`/forum/${id}`}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "12px 16px",
-          background: "#1a1f24",
-          border: "1px solid #2d3339",
-          borderRadius: "6px",
-          transition: "all 0.2s",
-          cursor: "pointer",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = "#252a2f";
-          e.currentTarget.style.borderColor = "#3b82f6";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = "#1a1f24";
-          e.currentTarget.style.borderColor = "#2d3339";
-        }}
-      >
+    <Link
+      href={`/forum/${id}`}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "12px 16px",
+        background: "#1a1f24",
+        border: "1px solid #2d3339",
+        borderRadius: "6px",
+        transition: "all 0.2s",
+        cursor: "pointer",
+        textDecoration: "none",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = "#252a2f";
+        e.currentTarget.style.borderColor = "#3b82f6";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "#1a1f24";
+        e.currentTarget.style.borderColor = "#2d3339";
+      }}
+    >
         {/* Post Info */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <h4
@@ -126,7 +127,6 @@ function ForumPostItem({ post }: ForumPostItemProps) {
             <div>views</div>
           </div>
         </div>
-      </div>
     </Link>
   );
 }

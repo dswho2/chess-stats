@@ -6,10 +6,9 @@
 "use client";
 
 import { Card, CardBody } from "@/components/ui/Card";
-import { useTheme } from "@/contexts/ThemeContext";
 import Link from "next/link";
 import { mockForumPosts } from "@/lib/mockData";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface ForumPost {
   id: string;
@@ -23,15 +22,19 @@ interface ForumPost {
 }
 
 export default function ForumPage() {
-  const { isDarkMode } = useTheme();
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("activity");
 
-  const headingColor = isDarkMode ? "#e8e8e8" : "#1f2937";
-  const textColor = isDarkMode ? "#9ca3af" : "#6b7280";
-
   // Get unique categories from posts
   const categories = Array.from(new Set(mockForumPosts.map((post) => post.category).filter(Boolean)));
+
+  const getCategoryColor = (category?: string): string => {
+    if (category === "Tournaments") return "#5b8ac6";
+    if (category === "Strategy") return "#4a9d7d";
+    if (category === "Players") return "#d88e3b";
+    if (category === "Learning") return "#8b7ba8";
+    return "#6b7280";
+  };
 
   // Filter and sort posts
   const getFilteredAndSortedPosts = () => {
@@ -56,153 +59,125 @@ export default function ForumPage() {
   const displayPosts = getFilteredAndSortedPosts();
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "48px" }}>
-      {/* Page Header */}
-      <div>
-        <h1 style={{ fontSize: "32px", fontWeight: 700, color: headingColor, marginBottom: "12px" }}>
-          Chess Forum
-        </h1>
-        <p style={{ fontSize: "16px", color: textColor }}>
-          Join the discussion about tournaments, strategies, players, and more
-        </p>
-      </div>
+    <div className="flex flex-col gap-12">
+      {/* Page Header and Filters */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-8 items-start">
+        {/* Page Header */}
+        <div className="min-w-0">
+          <h1 className="text-3xl font-bold text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800 mb-3">
+            Chess Forum
+          </h1>
+          <p className="text-base text-[--color-text-secondary] dark:text-[--color-text-secondary] light:text-gray-600">
+            Join the discussion about tournaments, strategies, players, and more
+          </p>
+        </div>
 
-      {/* Filters and Sorting */}
-      <section>
-        <Card>
+        {/* Filters and Sorting */}
+        <Card className="w-full lg:w-[500px]">
           <CardBody>
-            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
-                {/* Category Filter */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <label style={{ fontSize: "14px", fontWeight: 500, color: headingColor }}>
-                    Category
-                  </label>
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    style={{
-                      padding: "10px 12px",
-                      borderRadius: "6px",
-                      background: isDarkMode ? "#1a1f24" : "#f9fafb",
-                      border: isDarkMode ? "1px solid #2d3339" : "1px solid #e5e7eb",
-                      color: isDarkMode ? "#e8e8e8" : "#1f2937",
-                      fontSize: "14px",
-                      cursor: "pointer",
-                      outline: "none",
-                    }}
-                  >
-                    <option value="all">All Categories</option>
-                    {categories.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            <div className="flex flex-col gap-5 p-2">
+              {/* Sort By */}
+              <div className="flex flex-col gap-3">
+                <label className="text-sm font-medium text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800">
+                  Sort By
+                </label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="py-2.5 px-3 rounded-md bg-[--color-secondary-bg] dark:bg-[--color-secondary-bg] light:bg-gray-50 border border-[--color-border] dark:border-[--color-border] light:border-gray-300 text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800 text-sm cursor-pointer outline-none"
+                >
+                  <option value="activity">Recent Activity</option>
+                  <option value="replies">Most Replies</option>
+                  <option value="views">Most Views</option>
+                </select>
+              </div>
 
-                {/* Sort By */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <label style={{ fontSize: "14px", fontWeight: 500, color: headingColor }}>
-                    Sort By
-                  </label>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    style={{
-                      padding: "10px 12px",
-                      borderRadius: "6px",
-                      background: isDarkMode ? "#1a1f24" : "#f9fafb",
-                      border: isDarkMode ? "1px solid #2d3339" : "1px solid #e5e7eb",
-                      color: isDarkMode ? "#e8e8e8" : "#1f2937",
-                      fontSize: "14px",
-                      cursor: "pointer",
-                      outline: "none",
-                    }}
+              {/* Category Badges */}
+              <div className="flex flex-col gap-3">
+                <label className="text-sm font-medium text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800">
+                  Browse by Category
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setSelectedCategory("all")}
+                    className={`py-2 px-4 rounded-full text-sm font-semibold cursor-pointer transition-all ${
+                      selectedCategory === "all"
+                        ? "bg-blue-500 border-2 border-blue-500 text-white"
+                        : "bg-transparent border-2 border-[--color-border] dark:border-[--color-border] light:border-gray-300 text-[--color-text-secondary] hover:border-blue-500 hover:text-blue-500"
+                    }`}
                   >
-                    <option value="activity">Recent Activity</option>
-                    <option value="replies">Most Replies</option>
-                    <option value="views">Most Views</option>
-                  </select>
+                    All
+                  </button>
+                  {categories.map((category) => {
+                    const categoryPosts = mockForumPosts.filter((post) => post.category === category);
+                    const isSelected = selectedCategory === category;
+                    const categoryColor = getCategoryColor(category);
+
+                    return (
+                      <button
+                        key={category}
+                        onClick={() => setSelectedCategory(category)}
+                        className={`py-2 px-4 rounded-full text-sm font-semibold cursor-pointer transition-all flex items-center gap-1.5 ${
+                          isSelected
+                            ? "text-white"
+                            : "bg-transparent text-[--color-text-secondary] dark:text-[--color-text-secondary] light:text-gray-600"
+                        }`}
+                        style={{
+                          background: isSelected ? categoryColor : "transparent",
+                          borderWidth: "2px",
+                          borderStyle: "solid",
+                          borderColor: isSelected ? categoryColor : "var(--color-border)",
+                        }}
+                      >
+                        <span>{category}</span>
+                        <span
+                          className={`text-xs rounded-xl py-0.5 px-1.5 ${
+                            isSelected
+                              ? "bg-white/20"
+                              : "bg-[--color-secondary-bg] dark:bg-[--color-secondary-bg] light:bg-gray-100"
+                          }`}
+                          style={{ opacity: 0.8 }}
+                        >
+                          {categoryPosts.length}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Active Filters Summary */}
               {selectedCategory !== "all" && (
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: "14px", color: textColor }}>
-                    Showing {displayPosts.length} discussion{displayPosts.length !== 1 ? "s" : ""}
-                  </span>
-                  <button
-                    onClick={() => setSelectedCategory("all")}
-                    style={{
-                      padding: "6px 12px",
-                      borderRadius: "4px",
-                      background: "transparent",
-                      border: isDarkMode ? "1px solid #2d3339" : "1px solid #e5e7eb",
-                      color: textColor,
-                      fontSize: "13px",
-                      cursor: "pointer",
-                      transition: "all 0.2s",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "#3b82f6";
-                      e.currentTarget.style.color = "#3b82f6";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = isDarkMode ? "#2d3339" : "#e5e7eb";
-                      e.currentTarget.style.color = textColor;
-                    }}
-                  >
-                    Clear filters
-                  </button>
+                <div className="p-3 rounded-md bg-[--color-secondary-bg] dark:bg-[--color-secondary-bg] light:bg-gray-100 text-sm text-[--color-text-secondary] dark:text-[--color-text-secondary] light:text-gray-600">
+                  Showing {displayPosts.length} discussion{displayPosts.length !== 1 ? "s" : ""} in{" "}
+                  <strong className="text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800">
+                    {selectedCategory}
+                  </strong>
                 </div>
               )}
             </div>
           </CardBody>
         </Card>
-      </section>
+      </div>
 
       {/* Forum Posts List */}
       <section>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
-          <h2 style={{ fontSize: "24px", fontWeight: 700, color: headingColor }}>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800">
             Discussions ({displayPosts.length})
           </h2>
-          <button
-            style={{
-              padding: "10px 20px",
-              borderRadius: "6px",
-              background: "#3b82f6",
-              border: "none",
-              color: "#ffffff",
-              fontSize: "14px",
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "all 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "#2563eb";
-              e.currentTarget.style.transform = "translateY(-1px)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "#3b82f6";
-              e.currentTarget.style.transform = "translateY(0)";
-            }}
-          >
+          <button className="py-2.5 px-5 rounded-md bg-blue-500 border-none text-white text-sm font-semibold cursor-pointer transition-all hover:bg-blue-600 hover:-translate-y-px">
             New Discussion
           </button>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+        <div className="flex flex-col gap-2">
           {displayPosts.length > 0 ? (
-            displayPosts.map((post) => (
-              <ForumPostCard key={post.id} post={post} isDarkMode={isDarkMode} />
-            ))
+            displayPosts.map((post) => <ForumPostCard key={post.id} post={post} getCategoryColor={getCategoryColor} />)
           ) : (
             <Card>
               <CardBody>
-                <div style={{ textAlign: "center", padding: "40px 20px", color: textColor }}>
+                <div className="text-center py-10 px-5 text-[--color-text-secondary] dark:text-[--color-text-secondary] light:text-gray-600">
                   No discussions found in this category.
                 </div>
               </CardBody>
@@ -210,293 +185,147 @@ export default function ForumPage() {
           )}
         </div>
       </section>
-
-      {/* Category Sidebar / Quick Links */}
-      <section>
-        <h2 style={{ fontSize: "24px", fontWeight: 700, color: headingColor, marginBottom: "24px" }}>
-          Browse by Category
-        </h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "16px" }}>
-          {categories.map((category) => {
-            const categoryPosts = mockForumPosts.filter((post) => post.category === category);
-            const totalReplies = categoryPosts.reduce((sum, post) => sum + post.replies, 0);
-
-            return (
-              <Card
-                key={category}
-                hover
-                onClick={() => setSelectedCategory(category)}
-              >
-                <CardBody>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                    <h3 style={{ fontSize: "18px", fontWeight: 600, color: headingColor }}>
-                      {category}
-                    </h3>
-                    <div style={{ display: "flex", gap: "16px", fontSize: "14px", color: textColor }}>
-                      <div>
-                        <span style={{ fontWeight: 600, color: isDarkMode ? "#e8e8e8" : "#1f2937" }}>
-                          {categoryPosts.length}
-                        </span>{" "}
-                        threads
-                      </div>
-                      <div>
-                        <span style={{ fontWeight: 600, color: isDarkMode ? "#e8e8e8" : "#1f2937" }}>
-                          {totalReplies}
-                        </span>{" "}
-                        replies
-                      </div>
-                    </div>
-                  </div>
-                </CardBody>
-              </Card>
-            );
-          })}
-        </div>
-      </section>
     </div>
   );
 }
 
 // Forum Post Card Component
-function ForumPostCard({ post, isDarkMode }: { post: ForumPost; isDarkMode: boolean }) {
-  const [votes, setVotes] = useState(post.upvotes || Math.floor(Math.random() * 100) + 10);
-  const [userVote, setUserVote] = useState<'up' | 'down' | null>(null);
+function ForumPostCard({
+  post,
+  getCategoryColor,
+}: {
+  post: ForumPost;
+  getCategoryColor: (category?: string) => string;
+}) {
+  const [votes, setVotes] = useState(post.upvotes || 50);
+  const [userVote, setUserVote] = useState<"up" | "down" | null>(null);
 
-  const getCategoryColor = (category?: string): string => {
-    if (category === "Tournaments") return "#5b8ac6";
-    if (category === "Strategy") return "#4a9d7d";
-    if (category === "Players") return "#d88e3b";
-    if (category === "Improvement") return "#8b7ba8";
-    return "#6b7280";
-  };
+  // Initialize votes with random value on client side only
+  useEffect(() => {
+    if (!post.upvotes) {
+      setVotes(Math.floor(Math.random() * 100) + 10);
+    }
+  }, [post.upvotes]);
 
-  const handleVote = (type: 'up' | 'down', e: React.MouseEvent) => {
+  const handleVote = (type: "up" | "down", e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
     if (userVote === type) {
       // Remove vote
-      setVotes(votes + (type === 'up' ? -1 : 1));
+      setVotes(votes + (type === "up" ? -1 : 1));
       setUserVote(null);
     } else if (userVote === null) {
       // Add vote
-      setVotes(votes + (type === 'up' ? 1 : -1));
+      setVotes(votes + (type === "up" ? 1 : -1));
       setUserVote(type);
     } else {
       // Change vote
-      setVotes(votes + (type === 'up' ? 2 : -2));
+      setVotes(votes + (type === "up" ? 2 : -2));
       setUserVote(type);
     }
   };
 
-  const handleCardClick = () => {
-    window.location.href = `/forum/${post.id}`;
-  };
-
   return (
-    <div
-      style={{
-        display: "flex",
-        gap: "12px",
-        padding: "12px 16px",
-        background: isDarkMode ? "#1a1f24" : "#ffffff",
-        border: isDarkMode ? "1px solid #2d3339" : "1px solid #e5e7eb",
-        borderRadius: "6px",
-        transition: "all 0.2s",
-        cursor: "pointer",
-      }}
-      onClick={handleCardClick}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = isDarkMode ? "#252a2f" : "#f9fafb";
-        e.currentTarget.style.borderColor = "#3b82f6";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = isDarkMode ? "#1a1f24" : "#ffffff";
-        e.currentTarget.style.borderColor = isDarkMode ? "#2d3339" : "#e5e7eb";
-      }}
+    <Link
+      href={`/forum/${post.id}`}
+      className="flex gap-3 py-3 px-4 bg-[--color-secondary-bg] dark:bg-[--color-secondary-bg] light:bg-white border border-[--color-border] dark:border-[--color-border] light:border-gray-200 rounded-md transition-all cursor-pointer no-underline hover:bg-[--color-tertiary-bg] dark:hover:bg-[--color-tertiary-bg] light:hover:bg-gray-50 hover:border-blue-500"
     >
-        {/* Voting Section */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "0px",
-            minWidth: "32px",
-          }}
+      {/* Voting Section */}
+      <div className="flex flex-col items-center gap-0 min-w-[32px]">
+        {/* Upvote */}
+        <button
+          onClick={(e) => handleVote("up", e)}
+          className={`bg-transparent border-none cursor-pointer p-0.5 flex items-center justify-center transition-all ${
+            userVote === "up"
+              ? "text-amber-500"
+              : "text-[--color-text-muted] dark:text-[--color-text-muted] light:text-gray-400 hover:text-[--color-text-secondary]"
+          }`}
         >
-          {/* Upvote */}
-          <button
-            onClick={(e) => handleVote('up', e)}
-            style={{
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              padding: "2px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: userVote === 'up' ? "#f59e0b" : isDarkMode ? "#6b7280" : "#9ca3af",
-              transition: "all 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              if (userVote !== 'up') {
-                e.currentTarget.style.color = isDarkMode ? "#9ca3af" : "#6b7280";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (userVote !== 'up') {
-                e.currentTarget.style.color = isDarkMode ? "#6b7280" : "#9ca3af";
-              }
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 4l8 8h-6v8h-4v-8H4z" />
-            </svg>
-          </button>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 4l8 8h-6v8h-4v-8H4z" />
+          </svg>
+        </button>
 
-          {/* Vote Count */}
-          <span
-            style={{
-              fontSize: "13px",
-              fontWeight: 700,
-              color: userVote === 'up' ? "#f59e0b" : userVote === 'down' ? "#3b82f6" : isDarkMode ? "#e8e8e8" : "#1f2937",
-              lineHeight: "1",
-            }}
-          >
-            {votes}
-          </span>
+        {/* Vote Count */}
+        <span
+          className={`text-[13px] font-bold leading-none ${
+            userVote === "up"
+              ? "text-amber-500"
+              : userVote === "down"
+              ? "text-blue-500"
+              : "text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800"
+          }`}
+        >
+          {votes}
+        </span>
 
-          {/* Downvote */}
-          <button
-            onClick={(e) => handleVote('down', e)}
-            style={{
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              padding: "2px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: userVote === 'down' ? "#3b82f6" : isDarkMode ? "#6b7280" : "#9ca3af",
-              transition: "all 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              if (userVote !== 'down') {
-                e.currentTarget.style.color = isDarkMode ? "#9ca3af" : "#6b7280";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (userVote !== 'down') {
-                e.currentTarget.style.color = isDarkMode ? "#6b7280" : "#9ca3af";
-              }
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 20l-8-8h6V4h4v8h6z" />
-            </svg>
-          </button>
-        </div>
+        {/* Downvote */}
+        <button
+          onClick={(e) => handleVote("down", e)}
+          className={`bg-transparent border-none cursor-pointer p-0.5 flex items-center justify-center transition-all ${
+            userVote === "down"
+              ? "text-blue-500"
+              : "text-[--color-text-muted] dark:text-[--color-text-muted] light:text-gray-400 hover:text-[--color-text-secondary]"
+          }`}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 20l-8-8h6V4h4v8h6z" />
+          </svg>
+        </button>
+      </div>
 
-        {/* Post Content */}
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
-          {/* Title */}
-          <h3
-            style={{
-              fontSize: "15px",
-              fontWeight: 600,
-              color: isDarkMode ? "#e8e8e8" : "#1f2937",
-              lineHeight: "1.3",
-            }}
-          >
-            {post.title}
-          </h3>
+      {/* Post Content */}
+      <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+        {/* Title */}
+        <h3 className="text-[15px] font-semibold text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800 leading-tight">
+          {post.title}
+        </h3>
 
-          {/* Category Badge and Author/Time in same row */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              flexWrap: "wrap",
-            }}
-          >
-            {/* Category Badge */}
-            {post.category && (
-              <span
-                style={{
-                  padding: "2px 8px",
-                  borderRadius: "3px",
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  color: "#ffffff",
-                  background: getCategoryColor(post.category),
-                }}
-              >
-                {post.category}
-              </span>
-            )}
-
-            {/* Author and Time */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                fontSize: "12px",
-                color: isDarkMode ? "#6b7280" : "#9ca3af",
-              }}
+        {/* Category Badge and Author/Time in same row */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Category Badge */}
+          {post.category && (
+            <span
+              className="py-0.5 px-2 rounded text-[11px] font-semibold text-white"
+              style={{ background: getCategoryColor(post.category) }}
             >
-              <span>by </span>
-              <Link
-                href={`/players/${post.author.toLowerCase().replace(/\s+/g, '-')}`}
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  color: isDarkMode ? "#9ca3af" : "#6b7280",
-                  textDecoration: "none",
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.textDecoration = "underline";
-                  e.currentTarget.style.color = isDarkMode ? "#e8e8e8" : "#1f2937";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.textDecoration = "none";
-                  e.currentTarget.style.color = isDarkMode ? "#9ca3af" : "#6b7280";
-                }}
-              >
-                {post.author}
-              </Link>
-              <span>•</span>
-              <span>{post.lastActivity}</span>
-            </div>
+              {post.category}
+            </span>
+          )}
+
+          {/* Author and Time */}
+          <div className="flex items-center gap-1.5 text-xs text-[--color-text-muted] dark:text-[--color-text-muted] light:text-gray-500">
+            <span>by </span>
+            <span
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.location.href = `/players/${post.author.toLowerCase().replace(/\s+/g, "-")}`;
+              }}
+              className="text-[--color-text-secondary] dark:text-[--color-text-secondary] light:text-gray-600 no-underline transition-all cursor-pointer hover:underline hover:text-[--color-text-primary]"
+            >
+              {post.author}
+            </span>
+            <span>•</span>
+            <span>{post.lastActivity}</span>
           </div>
         </div>
+      </div>
 
-        {/* Stats (replies and views) */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "16px",
-            flexShrink: 0,
-            fontSize: "12px",
-            color: isDarkMode ? "#9ca3af" : "#6b7280",
-          }}
-          className="hidden md:flex"
-        >
-          <div style={{ textAlign: "center", minWidth: "50px" }}>
-            <div style={{ fontWeight: 700, fontSize: "15px", color: isDarkMode ? "#e8e8e8" : "#1f2937" }}>
-              {post.replies}
-            </div>
-            <div style={{ fontSize: "11px" }}>replies</div>
+      {/* Stats (replies and views) */}
+      <div className="hidden md:flex items-center gap-4 flex-shrink-0 text-xs text-[--color-text-secondary] dark:text-[--color-text-secondary] light:text-gray-600">
+        <div className="text-center min-w-[50px]">
+          <div className="font-bold text-base text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800">
+            {post.replies}
           </div>
-          <div style={{ textAlign: "center", minWidth: "50px" }}>
-            <div style={{ fontWeight: 700, fontSize: "15px", color: isDarkMode ? "#e8e8e8" : "#1f2937" }}>
-              {post.views.toLocaleString()}
-            </div>
-            <div style={{ fontSize: "11px" }}>views</div>
+          <div className="text-[11px]">replies</div>
+        </div>
+        <div className="text-center min-w-[50px]">
+          <div className="font-bold text-base text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800">
+            {post.views.toLocaleString()}
           </div>
+          <div className="text-[11px]">views</div>
         </div>
       </div>
     </Link>

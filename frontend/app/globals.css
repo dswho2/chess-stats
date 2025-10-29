@@ -1,35 +1,39 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* Design Tokens - VLR.gg inspired dark theme */
-@theme {
-  /* Background Colors */
-  --color-primary-bg: #0f1419;
-  --color-secondary-bg: #1a1f24;
-  --color-tertiary-bg: #252a2f;
+@layer base {
+  :root {
+    /* Background Colors */
+    --color-primary-bg: #0f1419;
+    --color-secondary-bg: #1a1f24;
+    --color-tertiary-bg: #252a2f;
 
-  /* Text Colors */
-  --color-text-primary: #e8e8e8;
-  --color-text-secondary: #9ca3af;
-  --color-text-muted: #6b7280;
+    /* Text Colors */
+    --color-text-primary: #e8e8e8;
+    --color-text-secondary: #9ca3af;
+    --color-text-muted: #6b7280;
 
-  /* Accent Colors */
-  --color-accent-primary: #10b981;
-  --color-accent-secondary: #3b82f6;
-  --color-accent-warning: #f59e0b;
-  --color-accent-error: #ef4444;
+    /* Accent Colors */
+    --color-accent-primary: #10b981;
+    --color-accent-secondary: #3b82f6;
+    --color-accent-warning: #f59e0b;
+    --color-accent-error: #ef4444;
 
-  /* Border & Divider */
-  --color-border: #2d3339;
-  --color-divider: #1f2429;
+    /* Border & Divider */
+    --color-border: #2d3339;
+    --color-divider: #1f2429;
 
-  /* Platform Colors */
-  --color-chess-com: #7fa650;
-  --color-lichess: #f59e0b;
-  --color-fide: #3b82f6;
+    /* Platform Colors */
+    --color-chess-com: #7fa650;
+    --color-lichess: #f59e0b;
+    --color-fide: #3b82f6;
 
-  /* Typography */
-  --font-family-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
-  --font-family-mono: var(--font-geist-mono), 'Courier New', monospace;
+    /* Typography */
+    --font-family-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+    --font-family-mono: var(--font-geist-mono), 'Courier New', monospace;
+  }
 }
 
 /* Global Styles */

@@ -65,6 +65,12 @@ export function DataTable<T extends Record<string, any>>({
     right: "text-right",
   };
 
+  const justifyClasses = {
+    left: "justify-start",
+    center: "justify-center",
+    right: "justify-end",
+  };
+
   return (
     <div className={cn("w-full overflow-x-auto", className)}>
       <table className="w-full border-collapse">
@@ -82,7 +88,7 @@ export function DataTable<T extends Record<string, any>>({
                 )}
                 onClick={() => column.sortable && handleSort(column.key)}
               >
-                <div className="flex items-center gap-1 justify-start">
+                <div className={cn("flex items-center gap-1", justifyClasses[column.align || "left"])}>
                   {column.label}
                   {column.sortable && sortColumn === column.key && (
                     <span className="text-[#3b82f6]">

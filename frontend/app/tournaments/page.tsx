@@ -6,7 +6,6 @@
 "use client";
 
 import { Card, CardBody } from "@/components/ui/Card";
-import { useTheme } from "@/contexts/ThemeContext";
 import { TournamentCard } from "@/components/tournament/TournamentCard";
 import { TournamentList } from "@/components/tournament/TournamentList";
 import { mockTournaments } from "@/lib/mockData";
@@ -14,7 +13,6 @@ import { TournamentStatus } from "@/types";
 import { useState } from "react";
 
 export default function TournamentsPage() {
-  const { isDarkMode } = useTheme();
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedPlatform, setSelectedPlatform] = useState<string>("all");
 
@@ -41,61 +39,38 @@ export default function TournamentsPage() {
 
   const filteredTournaments = getFilteredTournaments();
 
-  const headingColor = isDarkMode ? "#e8e8e8" : "#1f2937";
-  const textColor = isDarkMode ? "#9ca3af" : "#6b7280";
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "48px" }}>
-      {/* Page Header */}
-      <div>
-        <h1 style={{ fontSize: "32px", fontWeight: 700, color: headingColor, marginBottom: "12px" }}>
-          Tournaments
-        </h1>
-        <p style={{ fontSize: "16px", color: textColor }}>
-          Browse and join chess tournaments from Chess.com, Lichess, and FIDE
-        </p>
-      </div>
+    <div className="flex flex-col gap-12">
+      {/* Page Header and Filters */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-8 items-start">
+        {/* Page Header */}
+        <div className="min-w-0">
+          <h1 className="text-3xl font-bold text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800 mb-3">
+            Tournaments
+          </h1>
+          <p className="text-base text-[--color-text-secondary] dark:text-[--color-text-secondary] light:text-gray-600">
+            Browse and join chess tournaments from Chess.com, Lichess, and FIDE
+          </p>
+        </div>
 
-      {/* Featured Tournaments */}
-      {featuredTournaments.length > 0 && (
-        <section>
-          <h2 style={{ fontSize: "24px", fontWeight: 700, color: headingColor, marginBottom: "24px" }}>
-            Featured Tournaments
-          </h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px" }}>
-            {featuredTournaments.map((tournament) => (
-              <TournamentCard key={tournament.id} tournament={tournament} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Filters */}
-      <section>
-        <Card>
+        {/* Filters */}
+        <Card className="w-full lg:w-[450px]">
           <CardBody>
-            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-              <h3 style={{ fontSize: "18px", fontWeight: 600, color: headingColor }}>Filters</h3>
+            <div className="flex flex-col gap-5 p-2">
+              <h3 className="text-base font-semibold text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800">
+                Filters
+              </h3>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-4">
                 {/* Status Filter */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <label style={{ fontSize: "14px", fontWeight: 500, color: headingColor }}>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800">
                     Status
                   </label>
                   <select
                     value={selectedStatus}
                     onChange={(e) => setSelectedStatus(e.target.value)}
-                    style={{
-                      padding: "10px 12px",
-                      borderRadius: "6px",
-                      background: isDarkMode ? "#1a1f24" : "#f9fafb",
-                      border: isDarkMode ? "1px solid #2d3339" : "1px solid #e5e7eb",
-                      color: isDarkMode ? "#e8e8e8" : "#1f2937",
-                      fontSize: "14px",
-                      cursor: "pointer",
-                      outline: "none",
-                    }}
+                    className="py-2.5 px-3 rounded-md bg-[--color-secondary-bg] dark:bg-[--color-secondary-bg] light:bg-gray-50 border border-[--color-border] dark:border-[--color-border] light:border-gray-300 text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800 text-sm cursor-pointer outline-none"
                   >
                     <option value="all">All Statuses</option>
                     <option value={TournamentStatus.ONGOING}>Ongoing</option>
@@ -105,23 +80,14 @@ export default function TournamentsPage() {
                 </div>
 
                 {/* Platform Filter */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <label style={{ fontSize: "14px", fontWeight: 500, color: headingColor }}>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800">
                     Platform
                   </label>
                   <select
                     value={selectedPlatform}
                     onChange={(e) => setSelectedPlatform(e.target.value)}
-                    style={{
-                      padding: "10px 12px",
-                      borderRadius: "6px",
-                      background: isDarkMode ? "#1a1f24" : "#f9fafb",
-                      border: isDarkMode ? "1px solid #2d3339" : "1px solid #e5e7eb",
-                      color: isDarkMode ? "#e8e8e8" : "#1f2937",
-                      fontSize: "14px",
-                      cursor: "pointer",
-                      outline: "none",
-                    }}
+                    className="py-2.5 px-3 rounded-md bg-[--color-secondary-bg] dark:bg-[--color-secondary-bg] light:bg-gray-50 border border-[--color-border] dark:border-[--color-border] light:border-gray-300 text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800 text-sm cursor-pointer outline-none"
                   >
                     <option value="all">All Platforms</option>
                     <option value="chess-com">Chess.com</option>
@@ -133,33 +99,16 @@ export default function TournamentsPage() {
 
               {/* Active Filters Summary */}
               {(selectedStatus !== "all" || selectedPlatform !== "all") && (
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: "14px", color: textColor }}>
+                <div className="p-2.5 rounded-md bg-[--color-secondary-bg] dark:bg-[--color-secondary-bg] light:bg-gray-100 text-[13px] text-[--color-text-secondary] dark:text-[--color-text-secondary] light:text-gray-600 flex flex-col gap-2">
+                  <div>
                     Showing {filteredTournaments.length} tournament{filteredTournaments.length !== 1 ? "s" : ""}
-                  </span>
+                  </div>
                   <button
                     onClick={() => {
                       setSelectedStatus("all");
                       setSelectedPlatform("all");
                     }}
-                    style={{
-                      padding: "6px 12px",
-                      borderRadius: "4px",
-                      background: "transparent",
-                      border: isDarkMode ? "1px solid #2d3339" : "1px solid #e5e7eb",
-                      color: textColor,
-                      fontSize: "13px",
-                      cursor: "pointer",
-                      transition: "all 0.2s",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "#3b82f6";
-                      e.currentTarget.style.color = "#3b82f6";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = isDarkMode ? "#2d3339" : "#e5e7eb";
-                      e.currentTarget.style.color = textColor;
-                    }}
+                    className="py-1.5 px-3 rounded border border-[--color-border] dark:border-[--color-border] light:border-gray-300 bg-transparent text-[--color-text-secondary] dark:text-[--color-text-secondary] light:text-gray-600 text-[13px] cursor-pointer transition-all hover:border-blue-500 hover:text-blue-500"
                   >
                     Clear filters
                   </button>
@@ -168,12 +117,26 @@ export default function TournamentsPage() {
             </div>
           </CardBody>
         </Card>
-      </section>
+      </div>
+
+      {/* Featured Tournaments */}
+      {featuredTournaments.length > 0 && (
+        <section>
+          <h2 className="text-2xl font-bold text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800 mb-6">
+            Featured Tournaments
+          </h2>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-4">
+            {featuredTournaments.map((tournament) => (
+              <TournamentCard key={tournament.id} tournament={tournament} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Filtered Results or All Tournaments by Status */}
       {(selectedStatus !== "all" || selectedPlatform !== "all") ? (
         <section>
-          <h2 style={{ fontSize: "24px", fontWeight: 700, color: headingColor, marginBottom: "24px" }}>
+          <h2 className="text-2xl font-bold text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800 mb-6">
             Results ({filteredTournaments.length})
           </h2>
           {filteredTournaments.length > 0 ? (
@@ -181,7 +144,7 @@ export default function TournamentsPage() {
           ) : (
             <Card>
               <CardBody>
-                <div style={{ textAlign: "center", padding: "40px 20px", color: textColor }}>
+                <div className="text-center py-10 px-5 text-[--color-text-secondary] dark:text-[--color-text-secondary] light:text-gray-600">
                   No tournaments match your filters. Try adjusting your selection.
                 </div>
               </CardBody>
@@ -193,17 +156,11 @@ export default function TournamentsPage() {
           {/* Ongoing Tournaments */}
           {ongoingTournaments.length > 0 && (
             <section>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-                <h2 style={{ fontSize: "24px", fontWeight: 700, color: headingColor }}>Ongoing Tournaments</h2>
-                <div
-                  style={{
-                    width: "8px",
-                    height: "8px",
-                    borderRadius: "50%",
-                    background: "#10b981",
-                    animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-                  }}
-                />
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800">
+                  Ongoing Tournaments
+                </h2>
+                <div className="w-2 h-2 rounded-full bg-[--color-accent-primary] animate-pulse" />
               </div>
               <TournamentList tournaments={ongoingTournaments} />
             </section>
@@ -212,7 +169,7 @@ export default function TournamentsPage() {
           {/* Upcoming Tournaments */}
           {upcomingTournaments.length > 0 && (
             <section>
-              <h2 style={{ fontSize: "24px", fontWeight: 700, color: headingColor, marginBottom: "16px" }}>
+              <h2 className="text-2xl font-bold text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800 mb-4">
                 Upcoming Tournaments
               </h2>
               <TournamentList tournaments={upcomingTournaments} />
@@ -222,7 +179,7 @@ export default function TournamentsPage() {
           {/* Completed Tournaments */}
           {completedTournaments.length > 0 && (
             <section>
-              <h2 style={{ fontSize: "24px", fontWeight: 700, color: headingColor, marginBottom: "16px" }}>
+              <h2 className="text-2xl font-bold text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800 mb-4">
                 Recently Completed
               </h2>
               <TournamentList tournaments={completedTournaments} />

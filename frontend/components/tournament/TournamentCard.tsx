@@ -36,28 +36,29 @@ export function TournamentCard({ tournament, variant = "default" }: TournamentCa
   };
 
   return (
-    <Link href={`/tournaments/${id}`}>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          background: isDarkMode ? "#1a1f24" : "#ffffff",
-          border: isDarkMode ? "1px solid #2d3339" : "1px solid #e5e7eb",
-          borderRadius: "8px",
-          overflow: "hidden",
-          transition: "all 0.2s",
-          cursor: "pointer",
-          height: "100%",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = isDarkMode ? "#252a2f" : "#f9fafb";
-          e.currentTarget.style.borderColor = "#3b82f6";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = isDarkMode ? "#1a1f24" : "#ffffff";
-          e.currentTarget.style.borderColor = isDarkMode ? "#2d3339" : "#e5e7eb";
-        }}
-      >
+    <Link
+      href={`/tournaments/${id}`}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        background: isDarkMode ? "#1a1f24" : "#ffffff",
+        border: isDarkMode ? "1px solid #2d3339" : "1px solid #e5e7eb",
+        borderRadius: "8px",
+        overflow: "hidden",
+        transition: "all 0.2s",
+        cursor: "pointer",
+        height: "100%",
+        textDecoration: "none",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = isDarkMode ? "#252a2f" : "#f9fafb";
+        e.currentTarget.style.borderColor = "#3b82f6";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = isDarkMode ? "#1a1f24" : "#ffffff";
+        e.currentTarget.style.borderColor = isDarkMode ? "#2d3339" : "#e5e7eb";
+      }}
+    >
         {/* Platform Color Bar */}
         <div
           style={{
@@ -165,7 +166,6 @@ export function TournamentCard({ tournament, variant = "default" }: TournamentCa
             </div>
           </div>
         </div>
-      </div>
     </Link>
   );
 }

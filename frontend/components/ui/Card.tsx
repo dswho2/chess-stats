@@ -12,6 +12,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 export interface CardProps {
   children: React.ReactNode;
   className?: string;
+  style?: React.CSSProperties;
   hover?: boolean;
   onClick?: () => void;
   as?: "div" | "article" | "section";
@@ -20,6 +21,7 @@ export interface CardProps {
 export function Card({
   children,
   className,
+  style,
   hover = false,
   onClick,
   as: Component = "div",
@@ -34,6 +36,7 @@ export function Card({
         borderRadius: "8px",
         transition: "all 0.15s",
         cursor: onClick || hover ? "pointer" : "default",
+        ...style,
       }}
       className={className}
       onClick={onClick}

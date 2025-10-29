@@ -6,7 +6,6 @@
 "use client";
 
 import { Card, CardBody } from "@/components/ui/Card";
-import { useTheme } from "@/contexts/ThemeContext";
 import { TournamentCard } from "@/components/tournament/TournamentCard";
 import { TournamentList } from "@/components/tournament/TournamentList";
 import { ForumPostsList } from "@/components/forum/ForumPostsList";
@@ -25,8 +24,6 @@ import {
 import { TournamentStatus } from "@/types";
 
 export default function Home() {
-  const { isDarkMode } = useTheme();
-
   // Separate featured tournaments
   const featuredTournaments = mockTournaments.filter((t) => t.featured);
 
@@ -44,15 +41,15 @@ export default function Home() {
     { id: "lichess", label: "Lichess", players: mockLichessRankings },
   ];
 
-  const headingColor = isDarkMode ? "#e8e8e8" : "#1f2937";
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "48px" }}>
+    <div className="flex flex-col gap-12">
       {/* Featured Tournaments */}
       {featuredTournaments.length > 0 && (
         <section>
-          <h2 style={{ fontSize: "24px", fontWeight: 700, color: headingColor, marginBottom: "24px" }}>Featured Tournaments</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px" }}>
+          <h2 className="text-2xl font-bold text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800 mb-5">
+            Featured Tournaments
+          </h2>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-4">
             {featuredTournaments.map((tournament) => (
               <TournamentCard key={tournament.id} tournament={tournament} />
             ))}
@@ -61,23 +58,17 @@ export default function Home() {
       )}
 
       {/* Main Content - 2 Column Layout */}
-      <div className="main-grid" style={{ display: "grid", gridTemplateColumns: "1fr", gap: "32px" }}>
+      <div className="main-grid grid grid-cols-1 gap-8">
         {/* Left Column - Tournaments */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "48px" }}>
+        <div className="flex flex-col gap-12">
           {/* Ongoing Tournaments */}
           {ongoingTournaments.length > 0 && (
             <section>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-                <h2 style={{ fontSize: "20px", fontWeight: 700, color: headingColor }}>Ongoing Tournaments</h2>
-                <div
-                  style={{
-                    width: "8px",
-                    height: "8px",
-                    borderRadius: "50%",
-                    background: "#10b981",
-                    animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-                  }}
-                />
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800">
+                  Ongoing Tournaments
+                </h2>
+                <div className="w-2 h-2 rounded-full bg-[--color-accent-primary] animate-pulse" />
               </div>
               <TournamentList tournaments={ongoingTournaments} />
             </section>
@@ -86,7 +77,9 @@ export default function Home() {
           {/* Upcoming Tournaments */}
           {upcomingTournaments.length > 0 && (
             <section>
-              <h2 style={{ fontSize: "20px", fontWeight: 700, color: headingColor, marginBottom: "16px" }}>Upcoming Tournaments</h2>
+              <h2 className="text-xl font-bold text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800 mb-4">
+                Upcoming Tournaments
+              </h2>
               <TournamentList tournaments={upcomingTournaments} />
             </section>
           )}
@@ -94,17 +87,21 @@ export default function Home() {
           {/* Completed Tournaments */}
           {completedTournaments.length > 0 && (
             <section>
-              <h2 style={{ fontSize: "20px", fontWeight: 700, color: headingColor, marginBottom: "16px" }}>Recently Completed</h2>
+              <h2 className="text-xl font-bold text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800 mb-4">
+                Recently Completed
+              </h2>
               <TournamentList tournaments={completedTournaments} />
             </section>
           )}
         </div>
 
         {/* Right Column - Sidebar */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "48px" }}>
+        <div className="flex flex-col gap-12">
           {/* Forum Discussions */}
           <section>
-            <h2 style={{ fontSize: "20px", fontWeight: 700, color: headingColor, marginBottom: "16px" }}>Top Discussions</h2>
+            <h2 className="text-xl font-bold text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800 mb-4">
+              Top Discussions
+            </h2>
             <Card>
               <CardBody>
                 <ForumPostsList posts={mockForumPosts} maxItems={5} />
@@ -114,7 +111,9 @@ export default function Home() {
 
           {/* Player Rankings with Tabs */}
           <section>
-            <h2 style={{ fontSize: "20px", fontWeight: 700, color: headingColor, marginBottom: "16px" }}>Player Rankings</h2>
+            <h2 className="text-xl font-bold text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800 mb-4">
+              Player Rankings
+            </h2>
             <Card>
               <CardBody>
                 <TabbedRankings categories={rankingCategories} maxItems={10} />
@@ -124,7 +123,9 @@ export default function Home() {
 
           {/* Top Performers */}
           <section>
-            <h2 style={{ fontSize: "20px", fontWeight: 700, color: headingColor, marginBottom: "16px" }}>Top Performers This Month</h2>
+            <h2 className="text-xl font-bold text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800 mb-4">
+              Top Performers This Month
+            </h2>
             <Card>
               <CardBody>
                 <TopPerformers performers={mockTopPerformers} maxItems={5} />
