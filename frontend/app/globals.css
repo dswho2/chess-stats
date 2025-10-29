@@ -1,0 +1,128 @@
+@import "tailwindcss";
+
+/* Design Tokens - VLR.gg inspired dark theme */
+@theme {
+  /* Background Colors */
+  --color-primary-bg: #0f1419;
+  --color-secondary-bg: #1a1f24;
+  --color-tertiary-bg: #252a2f;
+
+  /* Text Colors */
+  --color-text-primary: #e8e8e8;
+  --color-text-secondary: #9ca3af;
+  --color-text-muted: #6b7280;
+
+  /* Accent Colors */
+  --color-accent-primary: #10b981;
+  --color-accent-secondary: #3b82f6;
+  --color-accent-warning: #f59e0b;
+  --color-accent-error: #ef4444;
+
+  /* Border & Divider */
+  --color-border: #2d3339;
+  --color-divider: #1f2429;
+
+  /* Platform Colors */
+  --color-chess-com: #7fa650;
+  --color-lichess: #f59e0b;
+  --color-fide: #3b82f6;
+
+  /* Typography */
+  --font-family-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-family-mono: var(--font-geist-mono), 'Courier New', monospace;
+}
+
+/* Global Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Dark Mode (default) */
+html.dark body {
+  background: var(--color-primary-bg);
+  color: var(--color-text-primary);
+}
+
+/* Light Mode */
+html.light body {
+  background: #ffffff;
+  color: #1f2937;
+}
+
+body {
+  font-family: var(--font-family-sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+header > div {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+main {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+/* Scrollbar Styling - Dark Mode */
+html.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html.dark ::-webkit-scrollbar-track {
+  background: var(--color-primary-bg);
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: var(--color-tertiary-bg);
+  border-radius: 4px;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #3a3f44;
+}
+
+/* Scrollbar Styling - Light Mode */
+html.light ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html.light ::-webkit-scrollbar-track {
+  background: #f9fafb;
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Responsive Grid Layout - 3 Column */
+@media (min-width: 1024px) {
+  .main-grid-3col {
+    grid-template-columns: 2fr 1.2fr 0.8fr !important;
+  }
+}
+
+/* Legacy 2 column support */
+@media (min-width: 1024px) {
+  .main-grid {
+    grid-template-columns: 2fr 1fr !important;
+  }
+}
