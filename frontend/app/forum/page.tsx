@@ -9,6 +9,7 @@ import { Card, CardBody } from "@/components/ui/Card";
 import Link from "next/link";
 import { mockForumPosts } from "@/lib/mockData";
 import { useState, useEffect } from "react";
+import { VoteButtons } from "@/components/forum/VoteButtons";
 
 interface ForumPost {
   id: string;
@@ -198,7 +199,6 @@ function ForumPostCard({
   getCategoryColor: (category?: string) => string;
 }) {
   const [votes, setVotes] = useState(post.upvotes || 50);
-  const [userVote, setUserVote] = useState<"up" | "down" | null>(null);
 
   // Initialize votes with random value on client side only
   useEffect(() => {
@@ -207,25 +207,6 @@ function ForumPostCard({
     }
   }, [post.upvotes]);
 
-  const handleVote = (type: "up" | "down", e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (userVote === type) {
-      // Remove vote
-      setVotes(votes + (type === "up" ? -1 : 1));
-      setUserVote(null);
-    } else if (userVote === null) {
-      // Add vote
-      setVotes(votes + (type === "up" ? 1 : -1));
-      setUserVote(type);
-    } else {
-      // Change vote
-      setVotes(votes + (type === "up" ? 2 : -2));
-      setUserVote(type);
-    }
-  };
-
   return (
     <Link
       href={`/forum/${post.id}`}
@@ -233,46 +214,7 @@ function ForumPostCard({
     >
       {/* Voting Section */}
       <div className="flex flex-col items-center gap-0 min-w-[32px]">
-        {/* Upvote */}
-        <button
-          onClick={(e) => handleVote("up", e)}
-          className={`bg-transparent border-none cursor-pointer p-0.5 flex items-center justify-center transition-all ${
-            userVote === "up"
-              ? "text-amber-500"
-              : "text-[--color-text-muted] dark:text-[--color-text-muted] light:text-gray-400 hover:text-[--color-text-secondary]"
-          }`}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 4l8 8h-6v8h-4v-8H4z" />
-          </svg>
-        </button>
-
-        {/* Vote Count */}
-        <span
-          className={`text-[13px] font-bold leading-none ${
-            userVote === "up"
-              ? "text-amber-500"
-              : userVote === "down"
-              ? "text-blue-500"
-              : "text-[--color-text-primary] dark:text-[--color-text-primary] light:text-gray-800"
-          }`}
-        >
-          {votes}
-        </span>
-
-        {/* Downvote */}
-        <button
-          onClick={(e) => handleVote("down", e)}
-          className={`bg-transparent border-none cursor-pointer p-0.5 flex items-center justify-center transition-all ${
-            userVote === "down"
-              ? "text-blue-500"
-              : "text-[--color-text-muted] dark:text-[--color-text-muted] light:text-gray-400 hover:text-[--color-text-secondary]"
-          }`}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 20l-8-8h6V4h4v8h6z" />
-          </svg>
-        </button>
+        <VoteButtons initialVotes={votes} size="small" orientation="vertical" />
       </div>
 
       {/* Post Content */}
@@ -301,7 +243,7 @@ function ForumPostCard({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                window.location.href = `/players/${post.author.toLowerCase().replace(/\s+/g, "-")}`;
+                window.location.href = `/users/${post.username}`;
               }}
               className="text-[--color-text-secondary] dark:text-[--color-text-secondary] light:text-gray-600 no-underline transition-all cursor-pointer hover:underline hover:text-[--color-text-primary]"
             >

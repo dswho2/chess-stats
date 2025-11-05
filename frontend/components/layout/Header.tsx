@@ -3,7 +3,7 @@
 /**
  * Header Component
  * Global navigation header with Home/Icon, Search, and Nav links
- * Layout: [Home Icon] [Search Bar] [Tournaments] [Forum] [Stats] [Players]
+ * Layout: [Home Icon] [Search Bar] [Tournaments] [Forum] [Rankings] [Stats]
  */
 
 import Link from "next/link";
@@ -14,8 +14,8 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { label: "Tournaments", href: "/tournaments" },
   { label: "Forum", href: "/forum" },
+  { label: "Rankings", href: "/rankings" },
   { label: "Stats", href: "/stats" },
-  { label: "Players", href: "/players" },
 ];
 
 export function Header() {

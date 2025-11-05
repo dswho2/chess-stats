@@ -10,6 +10,9 @@ import Link from "next/link";
 import { getForumPostById, getCommentsForPost, getRelatedForumPosts } from "@/lib/mockData";
 import { useState, useEffect, use } from "react";
 import { notFound } from "next/navigation";
+import { VoteButtons } from "@/components/forum/VoteButtons";
+import { ReplyBox } from "@/components/forum/ReplyBox";
+import { Comment } from "@/components/forum/Comment";
 
 interface ForumPost {
   id: string;
@@ -113,7 +116,7 @@ export default function ForumThreadPage({ params }: { params: Promise<{ id: stri
                 {/* Author and Meta Info */}
                 <div className="flex items-center gap-3 text-sm text-[--color-text-muted]">
                   <Link
-                    href={`/players/${post.author.toLowerCase().replace(/\s+/g, "-")}`}
+                    href={`/users/${post.username}`}
                     className="text-[--color-text-secondary] hover:text-[--color-text-primary] font-medium transition-colors"
                   >
                     {post.author}
@@ -259,29 +262,33 @@ export default function ForumThreadPage({ params }: { params: Promise<{ id: stri
   );
 }
 
-// Thread Line Component
 function ThreadLine({
   height,
   isHovered,
   onClick,
+  onMouseEnter,
+  onMouseLeave,
 }: {
   height: string;
   isHovered: boolean;
   onClick: (e: React.MouseEvent) => void;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
 }) {
   return (
     <div
       className="absolute cursor-pointer z-10 transition-all"
       style={{
-        left: '12px', // Add left padding
+        left: '12px',
         top: '0',
-        width: '16px', // Thick clickable area
+        width: '16px',
         height: height,
       }}
       onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       title="Click to collapse/expand thread"
     >
-      {/* The actual visible line - thin and centered */}
       <div
         className="absolute left-1/2 -translate-x-1/2 transition-all"
         style={{
@@ -294,7 +301,6 @@ function ThreadLine({
   );
 }
 
-// CommentThread Component - handles collapsing of entire thread
 function CommentThread({
   comment,
   allReplies,
@@ -308,52 +314,35 @@ function CommentThread({
   const [isHovered, setIsHovered] = useState(false);
   const hasReplies = allReplies.filter(r => r.parentId === comment.id).length > 0;
 
+  const handleToggleCollapse = () => {
+    setIsCollapsed(!isCollapsed);
+    setIsHovered(false);
+  };
+
   return (
     <div className="relative">
-      {/* Parent Comment with line extending into it if there are replies */}
       <div className="relative">
-        {!isCollapsed && (
-          <div
-            className="absolute left-0"
-            style={{
-              top: '50%', // Start from middle of parent comment
-              bottom: '0',
-              width: '40px', // Space for line with padding
-              zIndex: 5,
-            }}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-          >
-          </div>
-        )}
-
-        <CommentCard
+        <Comment
           comment={comment}
           onReply={(content) => onReply(comment.id, content)}
           isCollapsed={isCollapsed}
-          setIsCollapsed={setIsCollapsed}
+          onToggleCollapse={handleToggleCollapse}
         />
       </div>
 
-      {/* Line continues below parent through all children */}
       {!isCollapsed && hasReplies && (
-        <div
-          className="relative"
-          style={{ paddingLeft: '40px' }}
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-        >
-          {/* Thread line extends down through all children */}
+        <div className="relative" style={{ paddingLeft: '40px' }}>
           <ThreadLine
             height="100%"
             isHovered={isHovered}
             onClick={(e) => {
               e.stopPropagation();
-              setIsCollapsed(!isCollapsed);
+              handleToggleCollapse();
             }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
           />
 
-          {/* Show replies */}
           {allReplies.filter(r => r.parentId === comment.id).map((reply) => (
             <ReplyThread
               key={reply.id}
@@ -370,7 +359,6 @@ function CommentThread({
   );
 }
 
-// ReplyThread Component - handles collapsing of reply threads
 function ReplyThread({
   reply,
   allReplies,
@@ -389,37 +377,35 @@ function ReplyThread({
   const shouldHighlight = parentHovered || isHovered;
   const hasReplies = allReplies.filter(r => r.parentId === reply.id).length > 0;
 
+  const handleToggleCollapse = () => {
+    setIsCollapsed(!isCollapsed);
+    setIsHovered(false);
+  };
+
   return (
     <div className="relative mt-2">
-      {/* Reply with line extending into it if there are nested replies */}
       <div className="relative">
-        <ReplyCard
-          reply={reply}
+        <Comment
+          comment={reply}
           onReply={(content) => onReply(reply.id, content)}
           isCollapsed={isCollapsed}
-          setIsCollapsed={setIsCollapsed}
+          onToggleCollapse={handleToggleCollapse}
         />
       </div>
 
-      {/* Line continues below reply through all nested children */}
       {!isCollapsed && hasReplies && (
-        <div
-          className="relative"
-          style={{ paddingLeft: '40px' }}
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-        >
-          {/* Thread line extends down through all nested children */}
+        <div className="relative" style={{ paddingLeft: '40px' }}>
           <ThreadLine
             height="100%"
             isHovered={shouldHighlight}
             onClick={(e) => {
               e.stopPropagation();
-              setIsCollapsed(!isCollapsed);
+              handleToggleCollapse();
             }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
           />
 
-          {/* Show nested replies */}
           {allReplies.filter(r => r.parentId === reply.id).map((nestedReply) => (
             <ReplyThread
               key={nestedReply.id}
@@ -438,75 +424,18 @@ function ReplyThread({
 
 // Post Voting and Reply Component
 function PostVotingAndReply({ initialUpvotes, onReply }: { initialUpvotes: number; onReply: (content: string) => void }) {
-  const [votes, setVotes] = useState(initialUpvotes);
-  const [userVote, setUserVote] = useState<"up" | "down" | null>(null);
   const [showReplyBox, setShowReplyBox] = useState(false);
-  const [replyContent, setReplyContent] = useState("");
 
-  const handleVote = (type: "up" | "down") => {
-    if (userVote === type) {
-      setVotes(votes + (type === "up" ? -1 : 1));
-      setUserVote(null);
-    } else if (userVote === null) {
-      setVotes(votes + (type === "up" ? 1 : -1));
-      setUserVote(type);
-    } else {
-      setVotes(votes + (type === "up" ? 2 : -2));
-      setUserVote(type);
-    }
-  };
-
-  const handlePostReply = () => {
-    if (replyContent.trim()) {
-      onReply(replyContent);
-      setReplyContent("");
-      setShowReplyBox(false);
-    }
+  const handleReplySubmit = (content: string) => {
+    onReply(content);
+    setShowReplyBox(false);
   };
 
   return (
     <>
       <div className="flex items-center justify-between">
         {/* Voting */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => handleVote("up")}
-            className={`flex items-center justify-center p-1.5 rounded transition-all ${
-              userVote === "up"
-                ? "text-amber-500"
-                : "text-[--color-text-muted] hover:text-amber-500"
-            }`}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 4l8 8h-6v8h-4v-8H4z" />
-            </svg>
-          </button>
-
-          <span
-            className={`text-base font-bold min-w-[40px] text-center ${
-              userVote === "up"
-                ? "text-amber-500"
-                : userVote === "down"
-                ? "text-blue-500"
-                : "text-[--color-text-primary]"
-            }`}
-          >
-            {votes}
-          </span>
-
-          <button
-            onClick={() => handleVote("down")}
-            className={`flex items-center justify-center p-1.5 rounded transition-all ${
-              userVote === "down"
-                ? "text-blue-500"
-                : "text-[--color-text-muted] hover:text-blue-500"
-            }`}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 20l-8-8h6V4h4v8h6z" />
-            </svg>
-          </button>
-        </div>
+        <VoteButtons initialVotes={initialUpvotes} size="medium" orientation="horizontal" />
 
         {/* Reply Button */}
         <button
@@ -519,320 +448,14 @@ function PostVotingAndReply({ initialUpvotes, onReply }: { initialUpvotes: numbe
 
       {/* Reply Box */}
       {showReplyBox && (
-        <div className="mt-4 p-4 rounded-md bg-[--color-tertiary-bg] border border-[--color-border]">
-          <textarea
-            value={replyContent}
-            onChange={(e) => setReplyContent(e.target.value)}
-            placeholder="Write your reply..."
-            className="w-full min-h-[100px] p-3 rounded-md bg-[--color-secondary-bg] border border-[--color-border] text-[--color-text-primary] text-sm resize-vertical outline-none focus:border-blue-500 transition-colors"
-          />
-          <div className="flex justify-end gap-2 mt-3">
-            <button
-              onClick={() => {
-                setShowReplyBox(false);
-                setReplyContent("");
-              }}
-              className="py-2 px-4 rounded-md bg-[--color-secondary-bg] border border-[--color-border] text-[--color-text-secondary] text-sm font-semibold cursor-pointer transition-all hover:bg-[--color-tertiary-bg]"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handlePostReply}
-              className="py-2 px-4 rounded-md bg-blue-500 border-none text-white text-sm font-semibold cursor-pointer transition-all hover:bg-blue-600"
-            >
-              Post Reply
-            </button>
-          </div>
-        </div>
+        <ReplyBox
+          onSubmit={handleReplySubmit}
+          onCancel={() => setShowReplyBox(false)}
+          size="medium"
+        />
       )}
     </>
   );
 }
 
-// Reply Card Component (for nested replies)
-function ReplyCard({ reply, onReply, isCollapsed, setIsCollapsed }: { reply: Reply; onReply: (content: string) => void; isCollapsed: boolean; setIsCollapsed: (collapsed: boolean) => void }) {
-  const [votes, setVotes] = useState(reply.upvotes);
-  const [userVote, setUserVote] = useState<"up" | "down" | null>(null);
-  const [showReplyBox, setShowReplyBox] = useState(false);
-  const [replyContent, setReplyContent] = useState("");
 
-  const handleVote = (type: "up" | "down") => {
-    if (userVote === type) {
-      setVotes(votes + (type === "up" ? -1 : 1));
-      setUserVote(null);
-    } else if (userVote === null) {
-      setVotes(votes + (type === "up" ? 1 : -1));
-      setUserVote(type);
-    } else {
-      setVotes(votes + (type === "up" ? 2 : -2));
-      setUserVote(type);
-    }
-  };
-
-  const handlePostReply = () => {
-    if (replyContent.trim()) {
-      onReply(replyContent);
-      setReplyContent("");
-      setShowReplyBox(false);
-    }
-  };
-
-  return (
-    <Card>
-      <CardBody className="!p-0">
-        <div className="px-4 py-2">
-          {/* Reply Header - Clickable to collapse */}
-          <div
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="flex items-center gap-2 mb-0.5 cursor-pointer hover:bg-[--color-tertiary-bg] px-1 py-0.5 rounded transition-colors"
-          >
-            <Link
-              href={`/players/${reply.author.toLowerCase().replace(/\s+/g, "-")}`}
-              onClick={(e) => e.stopPropagation()}
-              className="text-sm font-semibold text-[--color-text-secondary] hover:text-[--color-text-primary] transition-colors"
-            >
-              {reply.author}
-            </Link>
-            <span className="text-xs text-[--color-text-muted]">•</span>
-            <span className="text-xs text-[--color-text-muted]">{reply.createdAt}</span>
-            <span className="text-xs text-[--color-text-muted] ml-auto">
-              {isCollapsed ? "[+]" : "[-]"}
-            </span>
-          </div>
-
-          {!isCollapsed && (
-            <>
-              {/* Reply Content */}
-              <p className="text-sm text-[--color-text-primary] pl-1 leading-snug mb-0.5">
-                {reply.content}
-              </p>
-
-              {/* Reply Actions */}
-              <div className="flex items-center justify-between py-0.5">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleVote("up")}
-                    className={`flex items-center justify-center p-1 rounded transition-all ${
-                      userVote === "up"
-                        ? "text-amber-500"
-                        : "text-[--color-text-muted] hover:text-amber-500"
-                    }`}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 4l8 8h-6v8h-4v-8H4z" />
-                    </svg>
-                  </button>
-
-                  <span
-                    className={`text-sm font-bold min-w-[30px] text-center ${
-                      userVote === "up"
-                        ? "text-amber-500"
-                        : userVote === "down"
-                        ? "text-blue-500"
-                        : "text-[--color-text-primary]"
-                    }`}
-                  >
-                    {votes}
-                  </span>
-
-                  <button
-                    onClick={() => handleVote("down")}
-                    className={`flex items-center justify-center p-1 rounded transition-all ${
-                      userVote === "down"
-                        ? "text-blue-500"
-                        : "text-[--color-text-muted] hover:text-blue-500"
-                    }`}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 20l-8-8h6V4h4v8h6z" />
-                    </svg>
-                  </button>
-                </div>
-
-                <button
-                  onClick={() => setShowReplyBox(!showReplyBox)}
-                  className="text-xs text-[--color-text-muted] hover:text-[--color-text-primary] font-medium transition-colors"
-                >
-                  Reply
-                </button>
-              </div>
-
-              {/* Reply Box */}
-              {showReplyBox && (
-                <div className="mt-1 p-2 rounded-md bg-[--color-tertiary-bg] border border-[--color-border]">
-                  <textarea
-                    value={replyContent}
-                    onChange={(e) => setReplyContent(e.target.value)}
-                    placeholder="Write your reply..."
-                    className="w-full min-h-[60px] p-2 rounded-md bg-[--color-secondary-bg] border border-[--color-border] text-[--color-text-primary] text-sm resize-vertical outline-none focus:border-blue-500 transition-colors"
-                  />
-                  <div className="flex justify-end gap-2 mt-1">
-                    <button
-                      onClick={() => {
-                        setShowReplyBox(false);
-                        setReplyContent("");
-                      }}
-                      className="py-1 px-2.5 rounded-md bg-[--color-secondary-bg] border border-[--color-border] text-[--color-text-secondary] text-xs font-semibold cursor-pointer transition-all hover:bg-[--color-tertiary-bg]"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handlePostReply}
-                      className="py-1 px-2.5 rounded-md bg-blue-500 border-none text-white text-xs font-semibold cursor-pointer transition-all hover:bg-blue-600"
-                    >
-                      Post Reply
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </CardBody>
-    </Card>
-  );
-}
-
-// Comment Card Component
-function CommentCard({ comment, onReply, isCollapsed, setIsCollapsed }: { comment: ForumComment; onReply: (content: string) => void; isCollapsed: boolean; setIsCollapsed: (collapsed: boolean) => void }) {
-  const [votes, setVotes] = useState(comment.upvotes);
-  const [userVote, setUserVote] = useState<"up" | "down" | null>(null);
-  const [showReplyBox, setShowReplyBox] = useState(false);
-  const [replyContent, setReplyContent] = useState("");
-
-  const handleVote = (type: "up" | "down") => {
-    if (userVote === type) {
-      setVotes(votes + (type === "up" ? -1 : 1));
-      setUserVote(null);
-    } else if (userVote === null) {
-      setVotes(votes + (type === "up" ? 1 : -1));
-      setUserVote(type);
-    } else {
-      setVotes(votes + (type === "up" ? 2 : -2));
-      setUserVote(type);
-    }
-  };
-
-  const handlePostReply = () => {
-    if (replyContent.trim()) {
-      onReply(replyContent);
-      setReplyContent("");
-      setShowReplyBox(false);
-    }
-  };
-
-  return (
-    <Card>
-      <CardBody className="!p-0">
-        <div className="px-4 py-2">
-          {/* Comment Header - Clickable to collapse */}
-          <div
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="flex items-center gap-2 mb-0.5 cursor-pointer hover:bg-[--color-tertiary-bg] px-1 py-0.5 rounded transition-colors"
-          >
-            <Link
-              href={`/players/${comment.author.toLowerCase().replace(/\s+/g, "-")}`}
-              onClick={(e) => e.stopPropagation()}
-              className="text-sm font-semibold text-[--color-text-secondary] hover:text-[--color-text-primary] transition-colors"
-            >
-              {comment.author}
-            </Link>
-            <span className="text-xs text-[--color-text-muted]">•</span>
-            <span className="text-xs text-[--color-text-muted]">{comment.createdAt}</span>
-            <span className="text-xs text-[--color-text-muted] ml-auto">
-              {isCollapsed ? "[+]" : "[-]"}
-            </span>
-          </div>
-
-          {!isCollapsed && (
-            <>
-              {/* Comment Content */}
-              <p className="text-sm text-[--color-text-primary] pl-1 leading-snug mb-0.5">
-                {comment.content}
-              </p>
-
-              {/* Comment Actions */}
-              <div className="flex items-center justify-between py-0.5">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleVote("up")}
-                    className={`flex items-center justify-center p-1 rounded transition-all ${
-                      userVote === "up"
-                        ? "text-amber-500"
-                        : "text-[--color-text-muted] hover:text-amber-500"
-                    }`}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 4l8 8h-6v8h-4v-8H4z" />
-                    </svg>
-                  </button>
-
-                  <span
-                    className={`text-sm font-bold min-w-[30px] text-center ${
-                      userVote === "up"
-                        ? "text-amber-500"
-                        : userVote === "down"
-                        ? "text-blue-500"
-                        : "text-[--color-text-primary]"
-                    }`}
-                  >
-                    {votes}
-                  </span>
-
-                  <button
-                    onClick={() => handleVote("down")}
-                    className={`flex items-center justify-center p-1 rounded transition-all ${
-                      userVote === "down"
-                        ? "text-blue-500"
-                        : "text-[--color-text-muted] hover:text-blue-500"
-                    }`}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 20l-8-8h6V4h4v8h6z" />
-                    </svg>
-                  </button>
-                </div>
-
-                <button
-                  onClick={() => setShowReplyBox(!showReplyBox)}
-                  className="text-xs text-[--color-text-muted] hover:text-[--color-text-primary] font-medium transition-colors"
-                >
-                  Reply
-                </button>
-              </div>
-
-              {/* Reply Box */}
-              {showReplyBox && (
-                <div className="mt-1 p-2 rounded-md bg-[--color-tertiary-bg] border border-[--color-border]">
-                  <textarea
-                    value={replyContent}
-                    onChange={(e) => setReplyContent(e.target.value)}
-                    placeholder="Write your reply..."
-                    className="w-full min-h-[60px] p-2 rounded-md bg-[--color-secondary-bg] border border-[--color-border] text-[--color-text-primary] text-sm resize-vertical outline-none focus:border-blue-500 transition-colors"
-                  />
-                  <div className="flex justify-end gap-2 mt-1">
-                    <button
-                      onClick={() => {
-                        setShowReplyBox(false);
-                        setReplyContent("");
-                      }}
-                      className="py-1 px-2.5 rounded-md bg-[--color-secondary-bg] border border-[--color-border] text-[--color-text-secondary] text-xs font-semibold cursor-pointer transition-all hover:bg-[--color-tertiary-bg]"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handlePostReply}
-                      className="py-1 px-2.5 rounded-md bg-blue-500 border-none text-white text-xs font-semibold cursor-pointer transition-all hover:bg-blue-600"
-                    >
-                      Post Reply
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </CardBody>
-    </Card>
-  );
-}

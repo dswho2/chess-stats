@@ -1,0 +1,942 @@
+// Chess Stats Platform - Prisma Schema (vlr.gg for Chess)
+// Database: PostgreSQL
+// ORM: Prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// CORE TABLES
+// ============================================================================
+
+/// User accounts (people using the platform - for forum, profiles, etc.)
+model User {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Authentication
+  username String  @unique @db.VarChar(50)
+  email    String  @unique @db.VarChar(255)
+  password String  @db.VarChar(255) // Hashed password
+
+  // Profile Information
+  displayName String? @map("display_name") @db.VarChar(100)
+  bio         String? @db.Text
+  avatarUrl   String? @map("avatar_url") @db.Text
+  countryIso  String? @map("country_iso") @db.VarChar(2) // Country they represent
+
+  // Community Stats (cached - computed from relations)
+  postCount       Int     @default(0) @map("post_count")
+  replyCount      Int     @default(0) @map("reply_count")
+  totalUpvotes    Int     @default(0) @map("total_upvotes") // Like Reddit karma
+  totalDownvotes  Int     @default(0) @map("total_downvotes")
+
+  // Roles & Permissions
+  role String @default("user") @db.VarChar(50) // user, moderator, admin
+
+  // Status
+  deleted    Boolean   @default(false)
+  isBanned   Boolean   @default(false) @map("is_banned")
+  bannedUntil DateTime? @map("banned_until") @db.Timestamptz(6)
+
+  // Email verification
+  emailVerified Boolean   @default(false) @map("email_verified")
+  verifiedAt    DateTime? @map("verified_at") @db.Timestamptz(6)
+
+  // Audit Fields
+  lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  posts        ForumPost[]
+  replies      ForumReply[]
+  votes        ForumVote[]
+  pickEmEntries PickEmEntry[]
+
+  @@index([username])
+  @@index([email])
+  @@index([deleted])
+  @@index([role])
+  @@index([totalUpvotes(sort: Desc)]) // Leaderboard
+  @@index([createdAt(sort: Desc)])
+  @@map("users")
+}
+
+/// Player registry across all platforms
+model Player {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Basic Information
+  fullName String  @map("full_name") @db.VarChar(255) // Magnus Carlsen
+  title    String? @db.VarChar(10) // GM, IM, FM, WGM, etc.
+
+  // Country (both FIDE and ISO codes for efficient comparison)
+  countryIso  String? @map("country_iso") @db.VarChar(2) // NO
+  countryFide String? @map("country_fide") @db.VarChar(3) // NOR
+
+  // Profile
+  profileUrl String  @unique @map("profile_url") @db.VarChar(255) // magnus-carlsen
+  avatarUrl  String? @map("avatar_url") @db.Text
+  bio        String? @db.Text
+  birthYear  Int?    @map("birth_year") // FIDE only provides birth year, not full date
+
+  // Status (soft delete)
+  deleted Boolean @default(false)
+
+  // External Platform Identifiers
+  fideId String? @unique @map("fide_id") @db.VarChar(50)
+
+  // Current Ratings - FIDE only (base truth)
+  // Platform-specific ratings (Lichess/Chess.com) are stored in PlayerAccount
+  fideClassicalRating Int? @map("fide_classical_rating")
+  fideRapidRating     Int? @map("fide_rapid_rating")
+  fideBlitzRating     Int? @map("fide_blitz_rating")
+
+  // Metadata
+  metadata Json? @db.JsonB
+
+  // Audit Fields
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  lastSyncedAt DateTime? @map("last_synced_at") @db.Timestamptz(6)
+
+  // Relations
+  ratingHistory PlayerRatingHistory[]
+  accounts      PlayerAccount[]
+  standings     TournamentStanding[]
+  whiteGames    Game[]                @relation("WhitePlayer")
+  blackGames    Game[]                @relation("BlackPlayer")
+  statistics    PlayerStatistics?
+
+  @@index([profileUrl])
+  @@index([fideId])
+  @@index([countryIso])
+  @@index([title])
+  @@index([fideClassicalRating(sort: Desc)])
+  @@index([deleted])
+  @@index([updatedAt])
+  @@map("players")
+}
+
+/// Tournament Series (e.g., "Speed Chess Championship 2024", "Titled Tuesday")
+model TournamentSeries {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Basic Information
+  name        String  @db.VarChar(255) // "Titled Tuesday", "Speed Chess Championship"
+  slug        String  @unique @db.VarChar(255) // "titled-tuesday", "speed-chess-championship"
+  description String? @db.Text
+  logoUrl     String? @map("logo_url") @db.Text
+
+  // Categorization
+  platform String  @db.VarChar(50) // chess-com, lichess, fide
+  category String? @db.VarChar(100) // "Weekly Tournament", "Annual Championship"
+  year     Int?    // For yearly series: "Titled Tuesday 2024" = 2024
+
+  // Status
+  deleted  Boolean @default(false)
+  featured Boolean @default(false)
+
+  // Metadata
+  metadata Json? @db.JsonB
+
+  // Audit Fields
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  tournaments Tournament[]
+
+  @@index([platform])
+  @@index([slug])
+  @@index([featured])
+  @@index([deleted])
+  @@index([platform, year])
+  @@map("tournament_series")
+}
+
+/// Tournaments from all platforms
+model Tournament {
+  id String @id @default(uuid()) @db.Uuid
+
+  // External Reference
+  externalId String @map("external_id") @db.VarChar(255)
+  platform   String @db.VarChar(50) // chess-com, lichess, fide
+
+  // Series (optional - for recurring tournaments)
+  seriesId String? @map("series_id") @db.Uuid
+
+  // Basic Information
+  name   String  @db.VarChar(500)
+  slug   String? @unique @db.VarChar(500)
+  status String  @db.VarChar(50) // upcoming, ongoing, completed, cancelled
+
+  // Multi-stage support
+  hasMultipleStages Boolean @default(false) @map("has_multiple_stages")
+  primaryFormat     String? @map("primary_format") @db.VarChar(50) // swiss, arena, knockout, round-robin
+
+  // Time Control
+  timeControl          String @map("time_control") @db.VarChar(50) // bullet, blitz, rapid, classical
+  timeControlSeconds   Int?   @map("time_control_seconds")
+  timeIncrementSeconds Int?   @map("time_increment_seconds")
+
+  // Schedule
+  startDate DateTime  @map("start_date") @db.Timestamptz(6)
+  endDate   DateTime? @map("end_date") @db.Timestamptz(6)
+
+  // Tournament Settings
+  totalRounds      Int? @map("total_rounds")
+  participantCount Int? @map("participant_count")
+
+  // Entry Requirements (vlr.gg-style)
+  minRating Int?     @map("min_rating")
+  maxRating Int?     @map("max_rating")
+  isTitledOnly Boolean @default(false) @map("is_titled_only")
+  isInviteOnly Boolean @default(false) @map("is_invite_only")
+
+  // Prize Information
+  prizePool     Decimal? @map("prize_pool") @db.Decimal(10, 2)
+  prizeCurrency String?  @map("prize_currency") @db.VarChar(10)
+
+  // Location (for OTB tournaments)
+  locationName    String? @map("location_name") @db.VarChar(255)
+  locationCity    String? @map("location_city") @db.VarChar(255)
+  locationCountry String? @map("location_country") @db.VarChar(2)
+  isOnline        Boolean @default(true) @map("is_online")
+
+  // Links & Media
+  officialUrl  String? @map("official_url") @db.Text
+  broadcastUrl String? @map("broadcast_url") @db.Text
+  thumbnailUrl String? @map("thumbnail_url") @db.Text
+  description  String? @db.Text
+
+  // Features
+  featured Boolean @default(false)
+  isRated  Boolean @default(true) @map("is_rated")
+
+  // Metadata
+  metadata Json? @db.JsonB
+
+  // Audit Fields
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  lastSyncedAt DateTime? @map("last_synced_at") @db.Timestamptz(6)
+
+  // Relations
+  series            TournamentSeries?      @relation(fields: [seriesId], references: [id], onDelete: SetNull)
+  stages            TournamentStage[]
+  standings         TournamentStanding[]
+  games             Game[]
+  rounds            TournamentRound[]
+  prizeDistribution TournamentPrize[]
+  pickEmContests    PickEmContest[]
+  brackets          TournamentBracket[]
+
+  @@unique([externalId, platform], name: "tournaments_external_id_platform_key")
+  @@index([platform])
+  @@index([status])
+  @@index([timeControl])
+  @@index([startDate(sort: Desc)])
+  @@index([endDate(sort: Desc)])
+  @@index([featured])
+  @@index([primaryFormat])
+  @@index([slug])
+  @@index([hasMultipleStages])
+  @@index([seriesId])
+  @@index([platform, status]) // Common: filter by platform and status
+  @@index([platform, timeControl, status]) // Common: upcoming blitz tournaments on Chess.com
+  @@map("tournaments")
+}
+
+/// Tournament Stages (for multi-stage tournaments like Swiss + Knockout)
+model TournamentStage {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Foreign Key
+  tournamentId String @map("tournament_id") @db.Uuid
+
+  // Stage Information
+  stageNumber Int    @map("stage_number") // 1, 2, 3...
+  name        String @db.VarChar(255) // "Swiss Stage", "Knockout Stage", "Finals"
+  format      String @db.VarChar(50) // swiss, knockout, round-robin
+  status      String @db.VarChar(50) // upcoming, ongoing, completed
+
+  // Stage Settings
+  roundCount       Int? @map("round_count")
+  participantCount Int? @map("participant_count")
+
+  // Schedule
+  startDate DateTime?  @map("start_date") @db.Timestamptz(6)
+  endDate   DateTime? @map("end_date") @db.Timestamptz(6)
+
+  // Qualification (for multi-stage)
+  qualificationCriteria String? @map("qualification_criteria") @db.Text
+  advancingPlayers      Int?    @map("advancing_players")
+
+  // Metadata
+  metadata Json? @db.JsonB
+
+  // Audit Fields
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  tournament Tournament            @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  rounds     TournamentRound[]
+  standings  TournamentStanding[]
+  games      Game[]
+  brackets   TournamentBracket[]
+
+  @@unique([tournamentId, stageNumber])
+  @@index([tournamentId])
+  @@index([status])
+  @@map("tournament_stages")
+}
+
+/// Tournament Prizes (vlr.gg-style prize distribution table)
+model TournamentPrize {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Foreign Key
+  tournamentId String @map("tournament_id") @db.Uuid
+
+  // Prize Information
+  placement     Int     // Required: 1, 2, 3, etc. (for single placement or start of range)
+  placementTo   Int?    @map("placement_to") // Optional: for ranges (2nd-4th would be placement=2, placementTo=4)
+  placementText String? @map("placement_text") @db.VarChar(50) // Display: "1st", "2nd-4th", "Top 8"
+
+  prizeAmount   Decimal @map("prize_amount") @db.Decimal(10, 2)
+  prizeCurrency String  @map("prize_currency") @db.VarChar(10)
+
+  // Additional rewards
+  qualifiesFor String? @map("qualifies_for") @db.Text // "Candidates Tournament 2024"
+  circuitPoints Int?    @map("circuit_points") // Grand Prix points, etc.
+
+  // Audit Fields
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, placement, placementTo])
+  @@index([tournamentId])
+  @@map("tournament_prizes")
+}
+
+/// Tournament Brackets (for knockout stages)
+model TournamentBracket {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Foreign Keys
+  tournamentId String  @map("tournament_id") @db.Uuid
+  stageId      String? @map("stage_id") @db.Uuid
+
+  // Bracket Information
+  bracketType String @map("bracket_type") @db.VarChar(50) // upper, lower, single
+  round       Int // Round number (1 = Round of 32, 2 = Round of 16, etc.)
+  matchNumber Int    @map("match_number") // Match within this round
+
+  // Participants
+  player1Id String? @map("player1_id") @db.Uuid
+  player2Id String? @map("player2_id") @db.Uuid
+
+  // Result
+  winnerId String? @map("winner_id") @db.Uuid
+  score    String? @db.VarChar(20) // "2-1", "3.5-2.5", etc.
+
+  // Next match (for bracket progression)
+  nextMatchId String? @map("next_match_id") @db.Uuid
+
+  // Metadata
+  metadata Json? @db.JsonB
+
+  // Audit Fields
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  tournament Tournament       @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  stage      TournamentStage? @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@index([tournamentId])
+  @@index([stageId])
+  @@index([round])
+  @@map("tournament_brackets")
+}
+
+/// Player performance in tournaments (vlr.gg-style standings)
+model TournamentStanding {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Foreign Keys
+  tournamentId String  @map("tournament_id") @db.Uuid
+  stageId      String? @map("stage_id") @db.Uuid
+  playerId     String  @map("player_id") @db.Uuid
+
+  // Standing Information
+  placement   Int      // Final placement (or start of range for knockout eliminations)
+  placementTo Int?     @map("placement_to") // End of range for shared placements (e.g., 5th-8th)
+  score       Decimal  @db.Decimal(4, 1)
+  tieBreak1   Decimal? @map("tie_break_1") @db.Decimal(6, 2)
+  tieBreak2   Decimal? @map("tie_break_2") @db.Decimal(6, 2)
+  tieBreak3   Decimal? @map("tie_break_3") @db.Decimal(6, 2)
+
+  // Performance Metrics
+  rating            Int?
+  performanceRating Int? @map("performance_rating")
+  ratingChange      Int? @map("rating_change")
+
+  // Game Statistics
+  wins        Int @default(0)
+  draws       Int @default(0)
+  losses      Int @default(0)
+  gamesPlayed Int @default(0) @map("games_played")
+  whiteGames  Int @default(0) @map("white_games")
+  blackGames  Int @default(0) @map("black_games")
+  byes        Int @default(0)
+
+  // Multi-stage status
+  eliminated Boolean @default(false) // Knocked out in knockout stage
+  qualified  Boolean @default(false) // Qualified for next stage
+
+  // Prize Information
+  prizeMoney    Decimal? @map("prize_money") @db.Decimal(10, 2)
+  prizeCurrency String?  @map("prize_currency") @db.VarChar(10)
+
+  // Metadata
+  metadata Json? @db.JsonB
+
+  // Audit Fields
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  tournament Tournament       @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  stage      TournamentStage? @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  player     Player           @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, stageId, playerId], name: "tournament_standings_unique")
+  @@index([tournamentId])
+  @@index([stageId])
+  @@index([playerId])
+  @@index([tournamentId, stageId, placement])
+  @@index([tournamentId, stageId, score(sort: Desc)])
+  @@index([playerId, placement]) // Player's tournament history sorted by placement
+  @@map("tournament_standings")
+}
+
+/// Individual games from tournaments
+model Game {
+  id String @id @default(uuid()) @db.Uuid
+
+  // External Reference
+  externalId String? @map("external_id") @db.VarChar(255)
+  platform   String  @db.VarChar(50)
+
+  // Tournament Reference
+  tournamentId String  @map("tournament_id") @db.Uuid
+  stageId      String? @map("stage_id") @db.Uuid
+  roundNumber  Int     @map("round_number")
+  boardNumber  Int?    @map("board_number")
+
+  // Players
+  whitePlayerId String @map("white_player_id") @db.Uuid
+  blackPlayerId String @map("black_player_id") @db.Uuid
+  whiteRating   Int?   @map("white_rating")
+  blackRating   Int?   @map("black_rating")
+
+  // Result
+  result      String  @db.VarChar(10) // 1-0, 0-1, 1/2-1/2, *, 0-0
+  termination String? @db.VarChar(50) // normal, time forfeit, abandoned, resignation
+
+  // Opening
+  openingName String? @map("opening_name") @db.VarChar(255)
+  openingEco  String? @map("opening_eco") @db.VarChar(10)
+  openingPly  Int?    @map("opening_ply")
+
+  // Game Data
+  moves     String? @db.Text
+  moveCount Int?    @map("move_count")
+  pgn       String? @db.Text
+  fenFinal  String? @map("fen_final") @db.VarChar(255)
+
+  // Time Information
+  timeControl         String?   @map("time_control") @db.VarChar(50)
+  startTime           DateTime? @map("start_time") @db.Timestamptz(6)
+  endTime             DateTime? @map("end_time") @db.Timestamptz(6)
+  durationSeconds     Int?      @map("duration_seconds")
+  whiteTimeRemaining  Int?      @map("white_time_remaining") // Seconds remaining
+  blackTimeRemaining  Int?      @map("black_time_remaining")
+
+  // Accuracy (Chess.com specific)
+  whiteAccuracy Decimal? @map("white_accuracy") @db.Decimal(5, 2)
+  blackAccuracy Decimal? @map("black_accuracy") @db.Decimal(5, 2)
+
+  // Links
+  pgnUrl       String? @map("pgn_url") @db.Text
+  analysisUrl  String? @map("analysis_url") @db.Text
+  broadcastUrl String? @map("broadcast_url") @db.Text
+
+  // Flags
+  isRated Boolean @default(true) @map("is_rated")
+
+  // Metadata
+  metadata Json? @db.JsonB
+
+  // Audit Fields
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  tournament  Tournament       @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  stage       TournamentStage? @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  whitePlayer Player           @relation("WhitePlayer", fields: [whitePlayerId], references: [id], onDelete: Cascade)
+  blackPlayer Player           @relation("BlackPlayer", fields: [blackPlayerId], references: [id], onDelete: Cascade)
+
+  @@index([tournamentId])
+  @@index([stageId])
+  @@index([tournamentId, stageId, roundNumber])
+  @@index([whitePlayerId])
+  @@index([blackPlayerId])
+  @@index([whitePlayerId, blackPlayerId])
+  @@index([externalId, platform])
+  @@index([openingEco])
+  @@index([startTime(sort: Desc)])
+  @@index([result])
+  @@map("games")
+}
+
+/// Tournament rounds (for Swiss/Round-Robin)
+model TournamentRound {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Foreign Keys
+  tournamentId String  @map("tournament_id") @db.Uuid
+  stageId      String? @map("stage_id") @db.Uuid
+  roundNumber  Int     @map("round_number")
+
+  // Round Information
+  name      String?   @db.VarChar(255)
+  status    String    @db.VarChar(50) // upcoming, ongoing, completed
+  startTime DateTime? @map("start_time") @db.Timestamptz(6)
+  endTime   DateTime? @map("end_time") @db.Timestamptz(6)
+
+  // Metadata
+  metadata Json? @db.JsonB
+
+  // Audit Fields
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  tournament Tournament       @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  stage      TournamentStage? @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, stageId, roundNumber], name: "tournament_rounds_unique")
+  @@index([tournamentId])
+  @@index([stageId])
+  @@index([status])
+  @@map("tournament_rounds")
+}
+
+// ============================================================================
+// SUPPORTING TABLES (vlr.gg-style stats & analytics)
+// ============================================================================
+
+// NOTE: Head-to-head stats are computed on-demand from Game table
+// If performance becomes an issue with high traffic, add a PlayerHeadToHead
+// caching table similar to PlayerStatistics
+
+/// Track rating changes over time
+/// Can link to verified Player (FIDE) OR standalone PlayerAccount (Lichess/Chess.com)
+model PlayerRatingHistory {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Foreign Keys - at least one must be set
+  // FIDE ratings link to Player, platform ratings link to PlayerAccount
+  playerId        String? @map("player_id") @db.Uuid
+  playerAccountId String? @map("player_account_id") @db.Uuid
+
+  // Period
+  periodMonth DateTime @map("period_month") @db.Date
+  platform    String   @db.VarChar(50) // fide, chess-com, lichess
+  timeControl String   @map("time_control") @db.VarChar(50)
+
+  // Rating Data
+  rating        Int
+  ratingChange  Int?  @map("rating_change")
+  gamesPlayed   Int?  @map("games_played")
+  rankInCountry Int?  @map("rank_in_country")
+  rankWorldwide Int?  @map("rank_worldwide")
+
+  // Audit Fields
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  player        Player?        @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerAccount PlayerAccount? @relation(fields: [playerAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, periodMonth, platform, timeControl], name: "player_rating_history_player_unique")
+  @@unique([playerAccountId, periodMonth, platform, timeControl], name: "player_rating_history_account_unique")
+  @@index([playerId])
+  @@index([playerAccountId])
+  @@index([playerId, periodMonth(sort: Desc)])
+  @@index([platform, timeControl])
+  @@map("player_rating_history")
+}
+
+/// Accounts (Lichess or Chess.com) associated with player
+/// Can be linked to verified Player OR standalone (for unverified accounts)
+model PlayerAccount {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Link to Player (nullable - allows standalone accounts)
+  playerId String? @map("player_id") @db.Uuid
+  player   Player? @relation(fields: [playerId], references: [id], onDelete: SetNull)
+
+  // External Platform Information
+  platform   String  @db.VarChar(50) // chess-com, lichess, fide
+  accountId  String  @map("account_id") @db.VarChar(255) // numeric or username based on platform
+  username   String? @db.VarChar(255) // optional but useful for UI and direct linking
+
+  // Verification status
+  verified   Boolean   @default(false) // Is this verified as belonging to Player?
+  verifiedAt DateTime? @map("verified_at") @db.Timestamptz(6)
+
+  // Platform-specific metadata
+  profileUrl String? @map("profile_url") @db.Text
+  avatarUrl  String? @map("avatar_url") @db.Text
+  metadata   Json?   @db.JsonB
+
+  // Current Ratings - Chess.com
+  chessComBulletRating Int? @map("chess_com_bullet_rating")
+  chessComBlitzRating  Int? @map("chess_com_blitz_rating")
+  chessComRapidRating  Int? @map("chess_com_rapid_rating")
+  chessComDailyRating  Int? @map("chess_com_daily_rating")
+
+  // Current Ratings - Lichess
+  lichessBulletRating      Int? @map("lichess_bullet_rating")
+  lichessBlitzRating       Int? @map("lichess_blitz_rating")
+  lichessRapidRating       Int? @map("lichess_rapid_rating")
+  lichessClassicalRating   Int? @map("lichess_classical_rating")
+  lichessUltrabulletRating Int? @map("lichess_ultrabullet_rating")
+
+  // Status (soft delete - account link may become invalid)
+  deleted Boolean @default(false)
+
+  // Audit
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  ratingHistory PlayerRatingHistory[]
+
+  @@unique([platform, accountId], name: "player_accounts_platform_account_key")
+  @@index([playerId])
+  @@index([platform])
+  @@index([playerId, deleted]) // Get active accounts for a player
+  @@index([platform, accountId], map: "player_account_lookup")
+  @@map("player_accounts")
+}
+
+/// Aggregated statistics per player (vlr.gg-style career stats)
+/// NOTE: Peak ratings are computed from PlayerRatingHistory table on-demand
+/// If performance becomes critical, cache peak ratings here as additional fields
+model PlayerStatistics {
+  // Primary Key (same as player_id)
+  playerId String @id @map("player_id") @db.Uuid
+
+  // Tournament Stats
+  tournamentsPlayed Int      @default(0) @map("tournaments_played")
+  tournamentsWon    Int      @default(0) @map("tournaments_won")
+  top3Finishes      Int      @default(0) @map("top3_finishes")
+  top10Finishes     Int      @default(0) @map("top10_finishes")
+  averagePlacement  Decimal? @map("average_placement") @db.Decimal(6, 2)
+  bestPlacement     Int?     @map("best_placement")
+  bestTournamentId  String?  @map("best_tournament_id") @db.Uuid
+
+  // Earnings (vlr.gg-style)
+  totalEarnings     Decimal  @default(0) @map("total_earnings") @db.Decimal(12, 2)
+  earningsCurrency  String   @default("USD") @map("earnings_currency") @db.VarChar(10)
+
+  // Game Stats
+  totalGames Int     @default(0) @map("total_games")
+  wins       Int     @default(0)
+  draws      Int     @default(0)
+  losses     Int     @default(0)
+  winRate    Decimal @default(0) @map("win_rate") @db.Decimal(5, 2)
+
+  // Color Stats
+  whiteGames Int @default(0) @map("white_games")
+  whiteWins  Int @default(0) @map("white_wins")
+  blackGames Int @default(0) @map("black_games")
+  blackWins  Int @default(0) @map("black_wins")
+
+  // Best Performances
+  bestPerformanceRating Int? @map("best_performance_rating")
+
+  // Opening Stats
+  topOpeningWhite      String? @map("top_opening_white") @db.VarChar(10)
+  topOpeningBlack      String? @map("top_opening_black") @db.VarChar(10)
+  favoriteOpeningCount Int?    @map("favorite_opening_count")
+
+  // Recent Form (last 30 days)
+  recentGames   Int @default(0) @map("recent_games")
+  recentWins    Int @default(0) @map("recent_wins")
+  recentDraws   Int @default(0) @map("recent_draws")
+  recentLosses  Int @default(0) @map("recent_losses")
+
+  // Audit Fields
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([tournamentsPlayed(sort: Desc)])
+  @@index([winRate(sort: Desc)])
+  @@index([totalEarnings(sort: Desc)])
+  @@map("player_statistics")
+}
+
+/// Track background sync operations
+model SyncJob {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Job Information
+  jobType  String  @map("job_type") @db.VarChar(100) // sync_players, sync_tournament, sync_games
+  platform String  @db.VarChar(50) // fide, chess-com, lichess
+  targetId String? @map("target_id") @db.VarChar(255)
+
+  // Status
+  status   String @db.VarChar(50) // pending, running, completed, failed
+  progress Int    @default(0) // Percentage (0-100)
+
+  // Timing
+  startedAt       DateTime? @map("started_at") @db.Timestamptz(6)
+  completedAt     DateTime? @map("completed_at") @db.Timestamptz(6)
+  durationSeconds Int?      @map("duration_seconds")
+
+  // Results
+  itemsProcessed Int @default(0) @map("items_processed")
+  itemsCreated   Int @default(0) @map("items_created")
+  itemsUpdated   Int @default(0) @map("items_updated")
+  itemsFailed    Int @default(0) @map("items_failed")
+
+  // Error Handling
+  errorMessage String? @map("error_message") @db.Text
+  errorStack   String? @map("error_stack") @db.Text
+  retryCount   Int     @default(0) @map("retry_count")
+  maxRetries   Int     @default(3) @map("max_retries")
+
+  // Metadata
+  metadata Json? @db.JsonB
+
+  // Audit Fields
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status])
+  @@index([jobType])
+  @@index([platform])
+  @@index([createdAt(sort: Desc)])
+  @@map("sync_jobs")
+}
+
+// ============================================================================
+// FORUM / COMMUNITY TABLES
+// ============================================================================
+
+/// Forum posts
+model ForumPost {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Author
+  userId String @map("user_id") @db.Uuid
+
+  // Content
+  title   String @db.VarChar(500)
+  content String @db.Text
+  slug    String @unique @db.VarChar(500)
+
+  // Categorization
+  category String  @db.VarChar(100) // general, tournaments, players, strategy, etc.
+  tags     String? @db.Text // Comma-separated or JSON array
+
+  // Engagement (cached)
+  replyCount Int @default(0) @map("reply_count")
+  viewCount  Int @default(0) @map("view_count")
+  upvotes    Int @default(0)
+  downvotes  Int @default(0)
+
+  // Moderation
+  isPinned   Boolean @default(false) @map("is_pinned")
+  isLocked   Boolean @default(false) @map("is_locked")
+  deleted    Boolean @default(false)
+
+  // Audit Fields
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  lastActivityAt DateTime @default(now()) @map("last_activity_at") @db.Timestamptz(6) // Updated on new replies
+
+  // Relations
+  author  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replies ForumReply[]
+  // Note: votes are accessed via polymorphic ForumVote (targetId + targetType)
+
+  @@index([userId])
+  @@index([category])
+  @@index([deleted])
+  @@index([isPinned, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@index([lastActivityAt(sort: Desc)]) // Sort by active discussions
+  @@index([category, lastActivityAt(sort: Desc)]) // Active discussions per category
+  @@index([upvotes(sort: Desc)])
+  @@map("forum_posts")
+}
+
+/// Forum replies/comments
+model ForumReply {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Author
+  userId String @map("user_id") @db.Uuid
+
+  // Parent
+  postId        String  @map("post_id") @db.Uuid
+  parentReplyId String? @map("parent_reply_id") @db.Uuid // For nested replies
+
+  // Content
+  content String @db.Text
+
+  // Engagement (cached)
+  upvotes   Int @default(0)
+  downvotes Int @default(0)
+
+  // Moderation
+  deleted Boolean @default(false)
+
+  // Audit Fields
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  author       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post         ForumPost    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parentReply  ForumReply?  @relation("ReplyToReply", fields: [parentReplyId], references: [id], onDelete: Cascade)
+  childReplies ForumReply[] @relation("ReplyToReply")
+  // Note: votes are accessed via polymorphic ForumVote (targetId + targetType)
+
+  @@index([userId])
+  @@index([postId])
+  @@index([parentReplyId])
+  @@index([deleted])
+  @@index([createdAt(sort: Desc)])
+  @@map("forum_replies")
+}
+
+/// Votes on posts and replies (polymorphic upvote/downvote system)
+model ForumVote {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Voter
+  userId String @map("user_id") @db.Uuid
+
+  // Polymorphic target
+  targetId   String @map("target_id") @db.Uuid
+  targetType String @map("target_type") @db.VarChar(20) // "post" or "reply"
+
+  // Vote type
+  voteType String @map("vote_type") @db.VarChar(10) // "upvote" or "downvote"
+
+  // Audit Fields
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Note: No FK relations for polymorphic - handled in application logic
+
+  @@unique([userId, targetId, targetType]) // User can only vote once per target
+  @@index([userId])
+  @@index([targetId, targetType])
+  @@index([targetType])
+  @@map("forum_votes")
+}
+
+// ============================================================================
+// PICK'EM TABLES (for future tournament predictions)
+// ============================================================================
+
+/// Pick'em contests (e.g., "Predict Titled Tuesday Top 8")
+model PickEmContest {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Contest Information
+  tournamentId String @map("tournament_id") @db.Uuid
+  name         String @db.VarChar(500)
+  description  String? @db.Text
+
+  // Contest Rules
+  contestType String @map("contest_type") @db.VarChar(50) // predict_winner, predict_top_N, bracket, etc.
+  pickCount   Int    @map("pick_count") // How many picks per entry (e.g., top 8 = 8 picks)
+
+  // Scoring
+  pointsCorrectPick     Int @map("points_correct_pick") @db.Integer
+  pointsCorrectPosition Int @map("points_correct_position") @db.Integer
+
+  // Timeline
+  pickDeadline DateTime  @map("pick_deadline") @db.Timestamptz(6)
+  resultsAt    DateTime? @map("results_at") @db.Timestamptz(6)
+
+  // Status
+  status String @db.VarChar(50) // open, closed, completed
+
+  // Audit Fields
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  tournament Tournament      @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  entries    PickEmEntry[]
+
+  @@index([tournamentId])
+  @@index([status])
+  @@index([pickDeadline])
+  @@map("pickem_contests")
+}
+
+/// User entries for pick'em contests
+model PickEmEntry {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Entry Information
+  contestId String @map("contest_id") @db.Uuid
+  userId    String @map("user_id") @db.Uuid
+
+  // Picks (stored as ordered JSON array of player IDs)
+  picks Json @db.JsonB // e.g., ["player-uuid-1", "player-uuid-2", ...]
+
+  // Scoring (calculated after tournament completes)
+  totalPoints Int? @map("total_points")
+  rank        Int? // Rank among all entries in this contest
+
+  // Audit Fields
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  contest PickEmContest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([contestId, userId]) // One entry per user per contest
+  @@index([contestId])
+  @@index([userId])
+  @@index([contestId, totalPoints(sort: Desc)]) // Leaderboard
+  @@map("pickem_entries")
+}
